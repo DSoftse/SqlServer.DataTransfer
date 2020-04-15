@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace AO.SqlServer
 {
-    public class DataTransfer
+    public partial class DataTransfer
     {
         private readonly DataSet _dataSet;
         private Dictionary<string, List<string>> _createTables;
@@ -26,24 +26,24 @@ namespace AO.SqlServer
             _createTables = new Dictionary<string, List<string>>();
         }
 
-        public async Task AddTableAsync(SqlConnection connection, string schema, string tableName, string criteria = null)
+        public async Task ExportAsync(SqlConnection connection, string schema, string tableName, string criteria = null)
         {
-            _createTables.Add($"{schema}-{tableName}", CreateTableStatement(connection, schema, tableName));
+            _createTables.Add($"{schema}.{tableName}", CreateTableStatement(connection, schema, tableName));
 
-            DataTable dataTable = new DataTable($"{schema}-{tableName}");
+            DataTable dataTable = new DataTable($"{schema}.{tableName}");
 
             using (var cmd = BuildSelectCommand(connection, schema, tableName, criteria))
             {
                 using (var adapter = new SqlDataAdapter(cmd))
                 {
                     await Task.Run(() =>
-                    {                        
+                    {
                         adapter.Fill(dataTable);
                     });
                 }
             }
 
-            _dataSet.Tables.Add(dataTable);            
+            _dataSet.Tables.Add(dataTable);
         }
 
         private List<string> CreateTableStatement(SqlConnection connection, string schema, string tableName)
@@ -81,14 +81,14 @@ namespace AO.SqlServer
                 var entry = zip.CreateEntry(entrySchema);
                 string json = JsonConvert.SerializeObject(_createTables);
                 using (var entryStream = entry.Open())
-                {                        
+                {
                     using (var writer = new StreamWriter(entryStream))
                     {
                         await writer.WriteAsync(json);
-                    }                    
+                    }
                 }
 
-                await WriteEntryInnerAsync(zip, entryData, (stream) => _dataSet.WriteXml(stream));                
+                await WriteEntryInnerAsync(zip, entryData, (stream) => _dataSet.WriteXml(stream, XmlWriteMode.WriteSchema));
             }
         }
 
@@ -102,7 +102,7 @@ namespace AO.SqlServer
                 {
                     action.Invoke(stream);
                 });
-            }            
+            }
         }
 
         private static SqlCommand BuildSelectCommand(SqlConnection connection, string schema, string tableName, string criteria)
@@ -110,6 +110,11 @@ namespace AO.SqlServer
             string query = $"SELECT * FROM [{schema}].[{tableName}]";
             if (!string.IsNullOrEmpty(criteria)) query += $" WHERE {criteria}";
             return new SqlCommand(query, connection);
+        }
+
+        public int this[string tableName]
+        {
+            get { return _dataSet.Tables[tableName].Rows.Count; }
         }
     }
 }

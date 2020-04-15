@@ -1,6 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
+using Microsoft.SqlServer.Management.Common;
+using Microsoft.SqlServer.Management.Smo;
 using Newtonsoft.Json;
-using SqlServer.DataTransfer.Models;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -13,19 +14,21 @@ namespace AO.SqlServer
     public class DataTransfer
     {
         private readonly DataSet _dataSet;
-        private List<TableDefinition> _tableDefs;
+        private Dictionary<string, string> _createTables;
 
         private const string entryData = "data.xml";
-        private const string entrySchema = "schema.xml";
+        private const string entrySchema = "schema.json";
 
         public DataTransfer()
         {
             _dataSet = new DataSet();
-            _tableDefs = new List<TableDefinition>();
+            _createTables = new Dictionary<string, string>();
         }
 
         public async Task AddTableAsync(SqlConnection connection, string schema, string tableName, string criteria = null)
         {
+            _createTables.Add($"{schema}-{tableName}", CreateTableStatement(connection, schema, tableName));
+
             DataTable dataTable = new DataTable($"{schema}-{tableName}");
 
             using (var cmd = BuildSelectCommand(connection, schema, tableName, criteria))
@@ -39,8 +42,25 @@ namespace AO.SqlServer
                 }
             }
 
-            _dataSet.Tables.Add(dataTable);
-            _tableDefs.Add(GetTableDefinition(connection, schema, tableName));
+            _dataSet.Tables.Add(dataTable);            
+        }
+
+        private string CreateTableStatement(SqlConnection connection, string schema, string tableName)
+        {
+            var sc = new ServerConnection(connection);
+            var server = new Server(sc);
+            var db = server.Databases[sc.CurrentDatabase];
+            var table = db.Tables[tableName, schema];
+            var scripter = new Scripter()
+            {
+                Server = server,
+                Options = new ScriptingOptions()
+                {
+                    DriForeignKeys = false                    
+                }
+            };
+            var result = scripter.Script(new SqlSmoObject[] { table });
+            return result.ToString();
         }
 
         public async Task SaveAsync(string fileName)
@@ -55,21 +75,17 @@ namespace AO.SqlServer
         {
             using (var zip = new ZipArchive(output, ZipArchiveMode.Create))
             {
-                foreach (var tbl in _tableDefs)
-                {
-                    var entry = zip.CreateEntry($"{tbl.Schema}-{tbl.Name}.json");
-                    using (var entryStream = entry.Open())
+                var entry = zip.CreateEntry(entrySchema);
+                string json = JsonConvert.SerializeObject(_createTables);
+                using (var entryStream = entry.Open())
+                {                        
+                    using (var writer = new StreamWriter(entryStream))
                     {
-                        string json = JsonConvert.SerializeObject(tbl);
-                        using (var writer = new StreamWriter(entryStream))
-                        {
-                            await writer.WriteAsync(json);
-                        }
-                    }
+                        await writer.WriteAsync(json);
+                    }                    
                 }
 
-                await WriteEntryInnerAsync(zip, entryData, (stream) => _dataSet.WriteXml(stream));
-                await WriteEntryInnerAsync(zip, entrySchema, (stream) => _dataSet.WriteXmlSchema(stream));
+                await WriteEntryInnerAsync(zip, entryData, (stream) => _dataSet.WriteXml(stream));                
             }
         }
 
@@ -91,11 +107,6 @@ namespace AO.SqlServer
             string query = $"SELECT * FROM [{schema}].[{tableName}]";
             if (!string.IsNullOrEmpty(criteria)) query += $" WHERE {criteria}";
             return new SqlCommand(query, connection);
-        }
-
-        private static TableDefinition GetTableDefinition(SqlConnection connection, string schema, string tableName)
-        {
-            throw new NotImplementedException();
         }
     }
 }

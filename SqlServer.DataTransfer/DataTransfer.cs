@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AO.SqlServer
@@ -14,7 +15,7 @@ namespace AO.SqlServer
     public class DataTransfer
     {
         private readonly DataSet _dataSet;
-        private Dictionary<string, string> _createTables;
+        private Dictionary<string, List<string>> _createTables;
 
         private const string entryData = "data.xml";
         private const string entrySchema = "schema.json";
@@ -22,7 +23,7 @@ namespace AO.SqlServer
         public DataTransfer()
         {
             _dataSet = new DataSet();
-            _createTables = new Dictionary<string, string>();
+            _createTables = new Dictionary<string, List<string>>();
         }
 
         public async Task AddTableAsync(SqlConnection connection, string schema, string tableName, string criteria = null)
@@ -45,7 +46,7 @@ namespace AO.SqlServer
             _dataSet.Tables.Add(dataTable);            
         }
 
-        private string CreateTableStatement(SqlConnection connection, string schema, string tableName)
+        private List<string> CreateTableStatement(SqlConnection connection, string schema, string tableName)
         {
             var sc = new ServerConnection(connection);
             var server = new Server(sc);
@@ -56,11 +57,13 @@ namespace AO.SqlServer
                 Server = server,
                 Options = new ScriptingOptions()
                 {
-                    DriForeignKeys = false                    
+                    DriForeignKeys = false,
+                    Indexes = true,
+                    DriPrimaryKey = true
                 }
             };
             var result = scripter.Script(new SqlSmoObject[] { table });
-            return result.ToString();
+            return result.OfType<string>().ToList();
         }
 
         public async Task SaveAsync(string fileName)

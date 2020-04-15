@@ -1,0 +1,2 @@
+This came from a need to support better seed data features with my [LocalDb](https://github.com/adamosoftware/SqlServer.LocalDb) project. Originally I wanted to add support for .bacpac files so that seed data could be added easily to `LocalDb` tests, but everything I've seen about working with .bacpac files programmatically is command-line based (e.g. [sqlpackage.exe](https://docs.microsoft.com/en-us/sql/tools/sqlpackage?view=sql-server-ver15), and I'm just not into that. This was one of those times I saw an opportunity to write a C# library. I'm into C# libraries!
+

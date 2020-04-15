@@ -3,6 +3,14 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>AO.SqlServer</RootNamespace>
+    <PackageId>AO.SqlServer.DataTransfer</PackageId>
+    <Authors>Adam O'Neil</Authors>
+    <Product>AO.SqlServer.DataTransfer</Product>
+    <Description>A SQL Server .bacpac alternative using zip files, ADO.NET and SMO</Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Copyright>Copyright (c) 2020 Adam O'Neil</Copyright>
+    <PackageProjectUrl>https://github.com/adamosoftware/SqlServer.DataTransfer</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/adamosoftware/SqlServer.DataTransfer</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

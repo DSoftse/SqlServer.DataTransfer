@@ -5,7 +5,7 @@ The Nuget package is **AO.SqlServer.DataTransfer**.
 Exporting data looks like this. In this example, I'm exporting two tables `WorkItem` and `Comment` along with some criteria for each table.
 
 ```csharp
- using (var cn = LocalDb.GetConnection("your db"))
+using (var cn = LocalDb.GetConnection("your db"))
 {
     await dt.AddTableAsync(source, "dbo", "WorkItem", "[OrganizationId]=1");
     await dt.AddTableAsync(source, "dbo", "Comment", "[ObjectId] IN (SELECT [Id] FROM [dbo].[WorkItem] WHERE [OrganizationId]=1)");

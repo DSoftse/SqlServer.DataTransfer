@@ -11,6 +11,7 @@
     <Copyright>Copyright (c) 2020 Adam O'Neil</Copyright>
     <PackageProjectUrl>https://github.com/adamosoftware/SqlServer.DataTransfer</PackageProjectUrl>
     <RepositoryUrl>https://github.com/adamosoftware/SqlServer.DataTransfer</RepositoryUrl>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +19,13 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="1.1.1" />
     <PackageReference Include="Microsoft.SqlServer.SqlManagementObjects" Version="160.2004021.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

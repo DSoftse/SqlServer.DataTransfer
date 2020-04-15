@@ -18,15 +18,15 @@ namespace Testing
 
             using (var source = LocalDb.GetConnection("Ginseng8"))
             {
-                dt.ExportAsync(source, "dbo", "WorkItem", "[OrganizationId]=1").Wait();
-                dt.ExportAsync(source, "dbo", "Comment", "[ObjectId] IN (SELECT [Id] FROM [dbo].[WorkItem] WHERE [OrganizationId]=1)").Wait();
+                dt.AddTableAsync(source, "dbo", "WorkItem", "[OrganizationId]=1").Wait();
+                dt.AddTableAsync(source, "dbo", "Comment", "[ObjectId] IN (SELECT [Id] FROM [dbo].[WorkItem] WHERE [OrganizationId]=1)").Wait();
 
                 workItemRecords = dt["dbo.WorkItem"];
                 commentRecords = dt["dbo.Comment"];
             }
 
             const string fileName = @"C:\users\adam\desktop\Ginseng.zip";            
-            dt.SaveAsync(fileName).Wait();
+            dt.ExportAsync(fileName).Wait();
 
             dt = new DataTransfer();
             using (var dest = LocalDb.GetConnection("DataTransfer"))

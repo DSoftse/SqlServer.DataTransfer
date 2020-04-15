@@ -26,7 +26,7 @@ namespace AO.SqlServer
             _createTables = new Dictionary<string, List<string>>();
         }
 
-        public async Task ExportAsync(SqlConnection connection, string schema, string tableName, string criteria = null)
+        public async Task AddTableAsync(SqlConnection connection, string schema, string tableName, string criteria = null)
         {
             _createTables.Add($"{schema}.{tableName}", CreateTableStatement(connection, schema, tableName));
 
@@ -66,15 +66,15 @@ namespace AO.SqlServer
             return result.OfType<string>().ToList();
         }
 
-        public async Task SaveAsync(string fileName)
+        public async Task ExportAsync(string fileName)
         {
             using (var output = File.Create(fileName))
             {
-                await SaveAsync(output);
+                await ExportAsync(output);
             }
         }
 
-        public async Task SaveAsync(Stream output)
+        public async Task ExportAsync(Stream output)
         {
             using (var zip = new ZipArchive(output, ZipArchiveMode.Create))
             {

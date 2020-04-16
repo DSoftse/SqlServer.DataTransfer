@@ -2,9 +2,10 @@ This came from a need to support better seed data features with my [LocalDb](htt
 
 The Nuget package is **AO.SqlServer.DataTransfer**.
 
-Exporting data looks like this. In this example, I'm exporting two tables `WorkItem` and `Comment` along with some criteria for each table.
+Exporting data uses the `DataTransfer` object, and looks like this. In this example, I'm exporting two tables `WorkItem` and `Comment` along with some criteria for each table. In this example, I'm using `LocalDb` as the connection source, but it works with any `SqlConnection`.
 
 ```csharp
+var dt = new DataTransfer();
 using (var cn = LocalDb.GetConnection("your db"))
 {
     await dt.AddTableAsync(source, "dbo", "WorkItem", "[OrganizationId]=1");

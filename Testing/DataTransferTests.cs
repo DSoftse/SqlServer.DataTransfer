@@ -35,7 +35,7 @@ namespace Testing
                 try { dest.Execute("DROP TABLE [dbo].[WorkItem]"); } catch { /* do nothing */ }
                 try { dest.Execute("DROP TABLE [dbo].[Comment]"); } catch { /* do nothing */ }
 
-                dt.ImportAsync(dest, fileName).Wait();
+                dt.ImportFileAsync(dest, fileName).Wait();
 
                 Assert.IsTrue(dt["dbo.WorkItem"].Equals(workItemRecords));
                 Assert.IsTrue(dt["dbo.Comment"].Equals(commentRecords));

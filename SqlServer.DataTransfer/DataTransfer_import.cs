@@ -6,6 +6,7 @@ using System.Data;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace AO.SqlServer
@@ -32,9 +33,17 @@ namespace AO.SqlServer
             }
         }
 
-        public async Task ImportAsync(SqlConnection connection, string fileName)
+        public async Task ImportFileAsync(SqlConnection connection, string fileName)
         {
             using (var stream = File.OpenRead(fileName))
+            {
+                await ImportAsync(connection, stream);
+            }
+        }        
+
+        public async Task ImportResourceAsync(SqlConnection connection, string resourceName)
+        {
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName))
             {
                 await ImportAsync(connection, stream);
             }

@@ -8,8 +8,8 @@ Exporting data uses the `DataTransfer` object, and looks like this. In this exam
 var dt = new DataTransfer();
 using (var cn = LocalDb.GetConnection("sourceDb"))
 {
-    await dt.AddTableAsync(source, "dbo", "WorkItem", "[OrganizationId]=1");
-    await dt.AddTableAsync(source, "dbo", "Comment", "[ObjectId] IN (SELECT [Id] FROM [dbo].[WorkItem] WHERE [OrganizationId]=1)");
+    await dt.AddTableAsync(cn, "dbo", "WorkItem", "[OrganizationId]=1");
+    await dt.AddTableAsync(cn, "dbo", "Comment", "[ObjectId] IN (SELECT [Id] FROM [dbo].[WorkItem] WHERE [OrganizationId]=1)");
 }
 
 await dt.ExportAsync(@"C:\users\adam\desktop\MyExport.zip");

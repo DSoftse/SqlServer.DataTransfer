@@ -20,7 +20,7 @@ Importing data looks like this:
 using (var cn = LocalDb.GetConnection("targetDb"))
 {
     dt = new DataTransfer();
-    await dt.ImportAsync(cn, @"C:\users\adam\desktop\MyExport.zip");
+    await dt.ImportFileAsync(cn, @"C:\users\adam\desktop\MyExport.zip");
 }
 ```
 

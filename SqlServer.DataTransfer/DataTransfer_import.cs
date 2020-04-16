@@ -1,4 +1,5 @@
-﻿using Dapper;
+﻿using AO.SqlServer.Models;
+using Dapper;
 using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using System.Collections.Generic;
@@ -54,7 +55,7 @@ namespace AO.SqlServer
             var dataTable = _dataSet.Tables[tableName];
             var name = ParseTableName(tableName);
 
-            using (SqlCommand select = BuildSelectCommand(dataTable, connection, name.Item1, name.Item2))
+            using (SqlCommand select = BuildSelectCommand(dataTable, connection, name.Schema, name.Name))
             {
                 using (var adapter = new SqlDataAdapter(select))
                 {
@@ -89,10 +90,12 @@ namespace AO.SqlServer
             }
         }
 
-        private static (string, string) ParseTableName(string tableName)
+        private static ObjectName ParseTableName(string tableName)
         {
             var parts = tableName.Split('.');
-            return (parts.Length > 1) ? (parts[0], parts[1]) : ("dbo", parts[0]);
+            return (parts.Length > 1) ? 
+                new ObjectName() { Schema = parts[0], Name = parts[1] } : 
+                new ObjectName() { Schema = "dbo", Name = parts[0] };
         }
 
         private async Task<IEnumerable<string>> CreateTablesIfNotExistsAsync(SqlConnection connection, Dictionary<string, List<string>> createTables)
@@ -104,7 +107,7 @@ namespace AO.SqlServer
                 var parts = ParseTableName(tableName);
                 return (await connection.QuerySingleOrDefaultAsync<int>(
                     "SELECT 1 FROM [sys].[tables] WHERE SCHEMA_NAME([schema_id])=@schema AND [name]=@name",
-                    new { schema = parts.Item1, name = parts.Item2 })) == 1;
+                    new { schema = parts.Schema, name = parts.Name })) == 1;
             };
 
             foreach (var commands in createTables)

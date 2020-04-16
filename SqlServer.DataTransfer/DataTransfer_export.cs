@@ -1,4 +1,6 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using AO.SqlServer.Models;
+using Dapper;
+using Microsoft.Data.SqlClient;
 using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Smo;
 using Newtonsoft.Json;
@@ -44,6 +46,16 @@ namespace AO.SqlServer
             }
 
             _dataSet.Tables.Add(dataTable);
+        }
+
+        public async Task AddAllTablesAsync(SqlConnection connection, Func<ObjectName, bool> filter = null)
+        {
+            var tables = await connection.QueryAsync<ObjectName>("SELECT SCHEMA_NAME([schema_id]) AS [Schema], [name] AS [Name] FROM [sys].[tables]");
+
+            foreach (var tbl in tables)
+            {
+                if (filter?.Invoke(tbl) ?? true) await AddTableAsync(connection, tbl.Schema, tbl.Name);
+            }
         }
 
         private List<string> CreateTableStatement(SqlConnection connection, string schema, string tableName)

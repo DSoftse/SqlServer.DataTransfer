@@ -6,7 +6,7 @@ Exporting data uses the `DataTransfer` object, and looks like this. In this exam
 
 ```csharp
 var dt = new DataTransfer();
-using (var cn = LocalDb.GetConnection("your db"))
+using (var cn = LocalDb.GetConnection("sourceDb"))
 {
     await dt.AddTableAsync(source, "dbo", "WorkItem", "[OrganizationId]=1");
     await dt.AddTableAsync(source, "dbo", "Comment", "[ObjectId] IN (SELECT [Id] FROM [dbo].[WorkItem] WHERE [OrganizationId]=1)");
@@ -17,7 +17,7 @@ await dt.ExportAsync(@"C:\users\adam\desktop\MyExport.zip");
 Importing data looks like this:
 
 ```csharp
-using (var cn = LocalDb.GetConnection("another db"))
+using (var cn = LocalDb.GetConnection("targetDb"))
 {
     dt = new DataTransfer();
     await dt.ImportAsync(cn, @"C:\users\adam\desktop\MyExport.zip");

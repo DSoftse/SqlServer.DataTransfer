@@ -3,6 +3,7 @@ using AO.SqlServer.Models;
 using Dapper;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SqlServer.LocalDb;
+using System.Linq;
 
 namespace Testing
 {
@@ -63,6 +64,11 @@ namespace Testing
                 foreach (var tbl in tables)
                 {
                     try { dest.Execute($"DROP TABLE [{tbl.Schema}].[{tbl.Name}]"); } catch { /* do nothing */ }
+                }
+
+                foreach (var schemaGrp in tables.GroupBy(item => item.Schema).Where(grp => !grp.Key.ToLower().Equals("dbo")))
+                {
+                    try { dest.Execute($"DROP SCHEMA [{schemaGrp.Key}]"); } catch { /* do nothing */ }
                 }
 
                 dt.ImportFileAsync(dest, fileName).Wait();

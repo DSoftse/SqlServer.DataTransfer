@@ -12,6 +12,8 @@
     <PackageProjectUrl>https://github.com/adamosoftware/SqlServer.DataTransfer</PackageProjectUrl>
     <RepositoryUrl>https://github.com/adamosoftware/SqlServer.DataTransfer</RepositoryUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <Version>1.0.1</Version>
+    <PackageReleaseNotes>Schema support added https://github.com/adamosoftware/SqlServer.DataTransfer/issues/6</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

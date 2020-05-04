@@ -110,8 +110,21 @@ namespace AO.SqlServer
                     new { schema = parts.Schema, name = parts.Name })) == 1;
             };
 
+            async Task<bool> schemaExistsAsync(string schemaName)
+            {
+                return (await connection.QuerySingleOrDefaultAsync<int>(
+                    "SELECT 1 FROM [sys].[schemas] WHERE [name]=@name", 
+                    new { name = schemaName }) == 1);
+            }
+
             foreach (var commands in createTables)
             {
+                string schema = ParseTableName(commands.Key).Schema;
+                if (!await schemaExistsAsync(schema))
+                {
+                    await connection.ExecuteAsync($"CREATE SCHEMA [{schema}]");
+                }
+
                 if (!await tableExistsAsync(commands.Key))
                 {
                     newTables.Add(commands.Key);

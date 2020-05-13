@@ -1,3 +1,5 @@
+Note 5/13/20: It seems I have sort of re-invented [DACPAC](https://voiceofthedba.com/2017/02/22/whats-a-dacpac-and-a-bacpac/)
+
 [![Nuget](https://img.shields.io/nuget/v/AO.SqlServer.DataTransfer)](https://www.nuget.org/packages/AO.SqlServer.DataTransfer/)
 
 This came from a need to support better seed data features with my [LocalDb](https://github.com/adamosoftware/SqlServer.LocalDb) project. Originally I wanted to add support for .bacpac files so that seed data could be added easily to `LocalDb` tests. However, everything I've seen about working with .bacpac files programmatically is command-line based (e.g. [sqlpackage.exe](https://docs.microsoft.com/en-us/sql/tools/sqlpackage?view=sql-server-ver15)), and I'm just not into that. This was one of those times I saw an opportunity to write a C# library, and I ran with it.

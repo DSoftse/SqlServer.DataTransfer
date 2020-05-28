@@ -30,7 +30,7 @@ namespace AO.SqlServer
 
         public async Task AddTableAsync(SqlConnection connection, string schema, string tableName, string criteria = null)
         {
-            _createTables.Add($"{schema}.{tableName}", CreateTableStatement(connection, schema, tableName));
+            _createTables.Add($"{schema}.{tableName}", CreateTableStatement(connection, schema, tableName)); /* #createTables */
 
             DataTable dataTable = new DataTable($"{schema}.{tableName}");
 

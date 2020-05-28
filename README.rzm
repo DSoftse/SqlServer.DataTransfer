@@ -1,0 +1,34 @@
+[![Nuget](https://img.shields.io/nuget/v/AO.SqlServer.DataTransfer)](https://www.nuget.org/packages/AO.SqlServer.DataTransfer/)
+
+This came from a need to support better seed data features with my [LocalDb](https://github.com/adamosoftware/SqlServer.LocalDb) project. Originally I wanted to add support for .bacpac files so that seed data could be added easily to `LocalDb` tests. However, everything I've seen about working with .bacpac files programmatically is command-line based (e.g. [sqlpackage.exe](https://docs.microsoft.com/en-us/sql/tools/sqlpackage?view=sql-server-ver15)), and I'm just not into that. This was one of those times I saw an opportunity to write a C# library, and I ran with it.
+
+The Nuget package is **AO.SqlServer.DataTransfer**.
+
+Exporting data uses the `DataTransfer` object, and looks like this. In this example, I'm exporting two tables `WorkItem` and `Comment` along with some criteria for each table. In this example, I'm using `LocalDb` as the connection source, but it works with any `SqlConnection`.
+
+```csharp
+var dt = new DataTransfer();
+using (var cn = LocalDb.GetConnection("sourceDb"))
+{
+    await dt.AddTableAsync(cn, "dbo", "WorkItem", "[OrganizationId]=1");
+    await dt.AddTableAsync(cn, "dbo", "Comment", "[ObjectId] IN (SELECT [Id] FROM [dbo].[WorkItem] WHERE [OrganizationId]=1)");
+}
+
+await dt.ExportAsync(@"C:\users\adam\desktop\MyExport.zip");
+```
+Importing data looks like this:
+
+```csharp
+using (var cn = LocalDb.GetConnection("targetDb"))
+{
+    dt = new DataTransfer();
+    await dt.ImportFileAsync(cn, @"C:\users\adam\desktop\MyExport.zip");
+}
+```
+
+The export logic is [here](https://github.com/adamosoftware/SqlServer.DataTransfer/blob/master/SqlServer.DataTransfer/DataTransfer_export.cs), and has two important methods [AddTableAsync](#DataTransfer.AddTableAsync) and [ExportAsync](#DataTransfer.ExportAsync). This uses [SMO](https://docs.microsoft.com/en-us/sql/relational-databases/server-management-objects-smo/overview-smo?view=sql-server-ver15) under the hood to generate accurate [CREATE TABLE](#DataTransfer.CreateTableStatement) statements. I had worked a little with SMO in years past, so fortunately I wasn't starting completely from scratch. SMO is a large library with much to get lost in. Just a side note: I [omit foreign keys](#DataTransfer.CreateTableStatement:OmitFK) from my generated script so I don't have to worry about table creation order in the destination database, and FKs have no benefit for a read-only data transfer medium like this. Note also I have `ExportAsync` overloads that accept both a filename and a stream. Stream support is always a good idea because it opens up many options for where you want output to end up. Sometimes I write directly to blob storage, for example, and that is all Stream-based.
+
+The import logic is [here](https://github.com/adamosoftware/SqlServer.DataTransfer/blob/master/SqlServer.DataTransfer/DataTransfer_import.cs), with one public method [ImportAsync](#DataTransfer.ImportAsync). Here again, I have overloads that accept both a stream and filename. Note that I'm using old school ADO.NET DataSets and their built-in XML serialization capability. The `Import` method uses [ReadXml](#DataTransfer.ImportAsync:ReadXml), and in the `Export` method uses [WriteXml](#DataTransfer.ExportAsync:WriteXml). DataSets have some schema writing ability, but I'm actually not clear what exactly it includes. I guess I could look. I use SMO for CREATE TABLE statements and [save that as json](#DataTransfer.AddTableAsync:createTables) because I know those will work to create real SQL Server tables. I think the ADO.NET DataSet "schema" info is just the column metadata that's CLR-relevant, not the complete SQL DDL behind them.
+
+## About the Testing project
+I wrote an [integration test](https://github.com/adamosoftware/SqlServer.DataTransfer/blob/master/Testing/DataTransferTests.cs) using a local database I happen to have personally. If you clone the repo and run it as-is, it won't work. This was indeed one of the motivations for this project, so that on other projects I could more easily bundle seed data to make them more portable.

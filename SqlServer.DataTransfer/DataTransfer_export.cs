@@ -18,11 +18,10 @@ namespace AO.SqlServer
     {
         private readonly DataSet _dataSet;
         private Dictionary<string, List<string>> _createTables;
-        private HashSet<int> _objectIds = new HashSet<int>();
+        private HashSet<int> _objectIds = new HashSet<int>();        
 
         private const string entryData = "data.xml";
-        private const string entrySchema = "schema.json";
-        private const string entryFKs = "foreign_keys.json";
+        private const string entrySchema = "schema.json";        
 
         public DataTransfer()
         {
@@ -99,20 +98,15 @@ namespace AO.SqlServer
         {
             using (var zip = new ZipArchive(output, ZipArchiveMode.Create))
             {
-                await WriteEntryInnerAsync(zip, entrySchema, async (stream) =>
+                await WriteEntryInnerAsync(zip, entrySchema, (stream) =>
                 {
                     string json = JsonConvert.SerializeObject(_createTables);
                     using (var writer = new StreamWriter(stream))
                     {
-                        await writer.WriteAsync(json);
+                        writer.Write(json);
                     }
                 });
-
-                await WriteEntryInnerAsync(zip, entryFKs, async (stream) =>
-                {
-
-                });
-
+                
                 await WriteEntryInnerAsync(zip, entryData, (stream) => _dataSet.WriteXml(stream, XmlWriteMode.WriteSchema));
             }
         }

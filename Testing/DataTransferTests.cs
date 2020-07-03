@@ -3,6 +3,8 @@ using AO.SqlServer.Models;
 using Dapper;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SqlServer.LocalDb;
+using System;
+using System.IO;
 using System.Linq;
 
 namespace Testing
@@ -27,7 +29,7 @@ namespace Testing
                 commentRecords = dt["dbo.Comment"];
             }
 
-            const string fileName = @"C:\users\adam\desktop\GinsengSelectTables.zip";            
+            string fileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GinsengSelectTables.zip");
             dt.ExportAsync(fileName).Wait();
 
             dt = new DataTransfer();
@@ -53,7 +55,7 @@ namespace Testing
                 dt.AddAllTablesAsync(source).Wait();
             }
 
-            const string fileName = @"C:\users\adam\desktop\GinsengAllTables.zip";
+            string fileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GinsengAllTables.zip");            
             dt.ExportAsync(fileName).Wait();
 
             dt = new DataTransfer();

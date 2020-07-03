@@ -18,9 +18,11 @@ namespace AO.SqlServer
     {
         private readonly DataSet _dataSet;
         private Dictionary<string, List<string>> _createTables;
+        private HashSet<int> _objectIds = new HashSet<int>();
 
         private const string entryData = "data.xml";
         private const string entrySchema = "schema.json";
+        private const string entryFKs = "foreign_keys.json";
 
         public DataTransfer()
         {
@@ -31,6 +33,7 @@ namespace AO.SqlServer
         public async Task AddTableAsync(SqlConnection connection, string schema, string tableName, string criteria = null)
         {
             _createTables.Add($"{schema}.{tableName}", CreateTableStatement(connection, schema, tableName)); /* #createTables */
+            _objectIds.Add(await getObjectId());
 
             DataTable dataTable = new DataTable($"{schema}.{tableName}");
 
@@ -46,11 +49,17 @@ namespace AO.SqlServer
             }
 
             _dataSet.Tables.Add(dataTable);
+
+            async Task<int> getObjectId() => 
+                await connection.QuerySingleAsync<int>(
+                "SELECT [object_id] FROM [sys].[tables] WHERE SCHEMA_NAME([schema_id])=@schema AND [name]=@tableName",
+                new { schema, tableName });            
         }
 
         public async Task AddAllTablesAsync(SqlConnection connection, Func<ObjectName, bool> filter = null)
         {
-            var tables = await connection.QueryAsync<ObjectName>("SELECT SCHEMA_NAME([schema_id]) AS [Schema], [name] AS [Name] FROM [sys].[tables]");
+            var tables = await connection.QueryAsync<ObjectName>(
+                "SELECT SCHEMA_NAME([schema_id]) AS [Schema], [name] AS [Name], [object_id] AS [ObjectId] FROM [sys].[tables]");            
 
             foreach (var tbl in tables)
             {
@@ -90,15 +99,19 @@ namespace AO.SqlServer
         {
             using (var zip = new ZipArchive(output, ZipArchiveMode.Create))
             {
-                var entry = zip.CreateEntry(entrySchema);
-                string json = JsonConvert.SerializeObject(_createTables);
-                using (var entryStream = entry.Open())
+                await WriteEntryInnerAsync(zip, entrySchema, async (stream) =>
                 {
-                    using (var writer = new StreamWriter(entryStream))
+                    string json = JsonConvert.SerializeObject(_createTables);
+                    using (var writer = new StreamWriter(stream))
                     {
                         await writer.WriteAsync(json);
                     }
-                }
+                });
+
+                await WriteEntryInnerAsync(zip, entryFKs, async (stream) =>
+                {
+
+                });
 
                 await WriteEntryInnerAsync(zip, entryData, (stream) => _dataSet.WriteXml(stream, XmlWriteMode.WriteSchema));
             }

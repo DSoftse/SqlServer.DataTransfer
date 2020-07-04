@@ -27,8 +27,8 @@ namespace AO.SqlServer
 
     public class FKBuilder
     {
-        private async Task<ILookup<int, FKInfoResult>> GetAllFKsAsync(SqlConnection connection) =>
-            (await connection.QueryAsync<FKInfoResult>(
+        private async Task<IEnumerable<FKInfoResult>> GetAllFKsAsync(SqlConnection connection) =>
+            await connection.QueryAsync<FKInfoResult>(
                 @"SELECT 
                     [fk].[object_id] AS [ObjectId],
                     [fk].[name] AS [ConstraintName],
@@ -52,21 +52,25 @@ namespace AO.SqlServer
                         [fk_col].[referenced_column_id]=[referenced_col].[column_id] AND
                         [fk_col].[referenced_object_id]=[referenced_col].[object_id]
                     INNER JOIN [sys].[tables] [referenced_table] ON [referenced_col].[object_id]=[referenced_table].[object_id]
-                    INNER JOIN [sys].[tables] [referencing_table] ON [referencing_col].[object_id]=[referencing_table].[object_id]")).ToLookup(row => row.ObjectId);
+                    INNER JOIN [sys].[tables] [referencing_table] ON [referencing_col].[object_id]=[referencing_table].[object_id]");
 
         public async Task<IEnumerable<string>> GetForeignKeysAsync(SqlConnection connection, HashSet<int> objectIds)
         {
             var allFKs = await GetAllFKsAsync(connection);
 
-            return allFKs.Select(fk => GetFKSyntax(fk));
+            var filteredFKs = allFKs
+                .Where(row => objectIds.Contains(row.ReferencedObjectId) && objectIds.Contains(row.ReferencingObjectId))
+                .ToLookup(row => row.ObjectId);
+
+            return filteredFKs.Select(fk => GetFKSyntax(fk));
         }
 
         private string GetFKSyntax(IGrouping<int, FKInfoResult> fkColumns)
         {
             var fk = fkColumns.First();
 
-            string referencingColumns = string.Join(", ", fkColumns.Select(col => $"<{col.ReferencingColumn}>"));
-            string referencedColumns = string.Join(", ", fkColumns.Select(col => $"<{col.ReferencedColumn}>"));
+            string referencingColumns = string.Join(", ", fkColumns.Select(col => $"[{col.ReferencingColumn}]"));
+            string referencedColumns = string.Join(", ", fkColumns.Select(col => $"[{col.ReferencedColumn}]"));
 
             string result = $"ALTER TABLE [{fk.ReferencedSchema}].[{fk.ReferencedTable}] ADD CONSTRAINT [{fk.ConstraintName}] FOREIGN KEY ({referencingColumns}) REFERENCES [{fk.ReferencedSchema}].[{fk.ReferencedTable}] ({referencedColumns})";
 

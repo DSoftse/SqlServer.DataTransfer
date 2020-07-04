@@ -18,10 +18,12 @@ namespace AO.SqlServer
     {
         private readonly DataSet _dataSet;
         private Dictionary<string, List<string>> _createTables;
-        private HashSet<int> _objectIds = new HashSet<int>();        
+        private HashSet<int> _objectIds = new HashSet<int>();
+        private IEnumerable<string> _foreignKeys;
 
         private const string entryData = "data.xml";
-        private const string entrySchema = "schema.json";        
+        private const string entrySchema = "schema.json";
+        private const string entryFKs = "foreign_keys.json";
 
         public DataTransfer()
         {
@@ -29,10 +31,11 @@ namespace AO.SqlServer
             _createTables = new Dictionary<string, List<string>>();
         }
 
-        public async Task AddTableAsync(SqlConnection connection, string schema, string tableName, string criteria = null)
+        public async Task AddTableAsync(SqlConnection connection, string schema, string tableName, string criteria = null, int objectId = 0)
         {
             _createTables.Add($"{schema}.{tableName}", CreateTableStatement(connection, schema, tableName)); /* #createTables */
-            _objectIds.Add(await getObjectId());
+            if (objectId == 0) objectId = await getObjectId();
+            _objectIds.Add(objectId);
 
             DataTable dataTable = new DataTable($"{schema}.{tableName}");
 
@@ -62,8 +65,11 @@ namespace AO.SqlServer
 
             foreach (var tbl in tables)
             {
-                if (filter?.Invoke(tbl) ?? true) await AddTableAsync(connection, tbl.Schema, tbl.Name);
+                if (filter?.Invoke(tbl) ?? true) await AddTableAsync(connection, tbl.Schema, tbl.Name, objectId: tbl.ObjectId);
             }
+
+            var fkb = new FKBuilder();
+            _foreignKeys = await fkb.GetForeignKeysAsync(connection, _objectIds);
         }
 
         private List<string> CreateTableStatement(SqlConnection connection, string schema, string tableName)
@@ -100,13 +106,25 @@ namespace AO.SqlServer
             {
                 await WriteEntryInnerAsync(zip, entrySchema, (stream) =>
                 {
-                    string json = JsonConvert.SerializeObject(_createTables);
+                    string json = JsonConvert.SerializeObject(_createTables, Formatting.Indented);
                     using (var writer = new StreamWriter(stream))
                     {
                         writer.Write(json);
                     }
                 });
-                
+
+                if (_foreignKeys?.Any() ?? false)
+                {
+                    await WriteEntryInnerAsync(zip, entryFKs, (stream) =>
+                    {
+                        string json = JsonConvert.SerializeObject(_foreignKeys, Formatting.Indented);
+                        using (var writer = new StreamWriter(stream))
+                        {
+                            writer.Write(json);
+                        }
+                    });
+                }
+
                 await WriteEntryInnerAsync(zip, entryData, (stream) => _dataSet.WriteXml(stream, XmlWriteMode.WriteSchema));
             }
         }

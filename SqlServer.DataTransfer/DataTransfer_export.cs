@@ -19,7 +19,7 @@ namespace AO.SqlServer
         private readonly DataSet _dataSet;
         private Dictionary<string, List<string>> _createTables;
         private HashSet<int> _objectIds = new HashSet<int>();
-        private IEnumerable<string> _foreignKeys;
+        private IEnumerable<FKBuilder.ConstraintObject> _foreignKeys;
 
         private const string entryData = "data.xml";
         private const string entrySchema = "schema.json";
@@ -34,7 +34,7 @@ namespace AO.SqlServer
         public async Task AddTableAsync(SqlConnection connection, string schema, string tableName, string criteria = null, int objectId = 0)
         {
             _createTables.Add($"{schema}.{tableName}", CreateTableStatement(connection, schema, tableName)); /* #createTables */
-            if (objectId == 0) objectId = await getObjectId();
+            if (objectId == 0) objectId = await GetObjectId(connection, schema, tableName);
             _objectIds.Add(objectId);
 
             DataTable dataTable = new DataTable($"{schema}.{tableName}");
@@ -51,12 +51,12 @@ namespace AO.SqlServer
             }
 
             _dataSet.Tables.Add(dataTable);
-
-            async Task<int> getObjectId() => 
-                await connection.QuerySingleAsync<int>(
-                "SELECT [object_id] FROM [sys].[tables] WHERE SCHEMA_NAME([schema_id])=@schema AND [name]=@tableName",
-                new { schema, tableName });            
         }
+
+        private async Task<int> GetObjectId(SqlConnection connection, string schema, string tableName) =>
+            await connection.QuerySingleAsync<int>(
+            "SELECT [object_id] FROM [sys].[tables] WHERE SCHEMA_NAME([schema_id])=@schema AND [name]=@tableName",
+            new { schema, tableName });
 
         public async Task AddAllTablesAsync(SqlConnection connection, Func<ObjectName, bool> filter = null)
         {

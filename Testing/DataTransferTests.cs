@@ -62,6 +62,15 @@ namespace Testing
             using (var dest = LocalDb.GetConnection("DataTransfer"))
             {
                 // make sure clean slate
+                var fks = dest.Query(
+                    @"SELECT SCHEMA_NAME([t].[schema_id]) AS [Schema], OBJECT_NAME([fk].[parent_object_id]) AS [TableName], [fk].[name] 
+                    FROM [sys].[foreign_keys] [fk]
+                    INNER JOIN [sys].[tables] [t] ON [fk].[parent_object_id]=[t].[object_id]");
+                foreach (var fk in fks)
+                {
+                    dest.Execute($"ALTER TABLE [{fk.Schema}].[{fk.TableName}] DROP CONSTRAINT [{fk.name}]");
+                }
+
                 var tables = dest.QueryAsync<ObjectName>("SELECT SCHEMA_NAME([schema_id]) AS [Schema], [name] AS [Name] FROM [sys].[tables]").Result;
                 foreach (var tbl in tables)
                 {

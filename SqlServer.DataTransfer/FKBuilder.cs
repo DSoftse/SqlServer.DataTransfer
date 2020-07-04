@@ -54,7 +54,7 @@ namespace AO.SqlServer
                     INNER JOIN [sys].[tables] [referenced_table] ON [referenced_col].[object_id]=[referenced_table].[object_id]
                     INNER JOIN [sys].[tables] [referencing_table] ON [referencing_col].[object_id]=[referencing_table].[object_id]");
 
-        public async Task<IEnumerable<string>> GetForeignKeysAsync(SqlConnection connection, HashSet<int> objectIds)
+        public async Task<IEnumerable<ConstraintObject>> GetForeignKeysAsync(SqlConnection connection, HashSet<int> objectIds)
         {
             var allFKs = await GetAllFKsAsync(connection);
 
@@ -62,7 +62,11 @@ namespace AO.SqlServer
                 .Where(row => objectIds.Contains(row.ReferencedObjectId) && objectIds.Contains(row.ReferencingObjectId))
                 .ToLookup(row => row.ObjectId);
 
-            return filteredFKs.Select(fk => GetFKSyntax(fk));
+            return filteredFKs.Select(fk => new ConstraintObject()
+            {
+                Name = fk.First().ConstraintName,
+                Command = GetFKSyntax(fk)
+            });
         }
 
         private string GetFKSyntax(IGrouping<int, FKInfoResult> fkColumns)
@@ -72,12 +76,18 @@ namespace AO.SqlServer
             string referencingColumns = string.Join(", ", fkColumns.Select(col => $"[{col.ReferencingColumn}]"));
             string referencedColumns = string.Join(", ", fkColumns.Select(col => $"[{col.ReferencedColumn}]"));
 
-            string result = $"ALTER TABLE [{fk.ReferencedSchema}].[{fk.ReferencedTable}] ADD CONSTRAINT [{fk.ConstraintName}] FOREIGN KEY ({referencingColumns}) REFERENCES [{fk.ReferencedSchema}].[{fk.ReferencedTable}] ({referencedColumns})";
+            string result = $"ALTER TABLE [{fk.ReferencingSchema}].[{fk.ReferencingTable}] ADD CONSTRAINT [{fk.ConstraintName}] FOREIGN KEY ({referencingColumns}) REFERENCES [{fk.ReferencedSchema}].[{fk.ReferencedTable}] ({referencedColumns})";
 
             if (fk.IsCascadeDelete) result += " ON DELETE CASCADE";
             if (fk.IsCascadeUpdate) result += " ON UPDATE CASCADE";
 
             return result;
         }
+
+        public class ConstraintObject
+        { 
+            public string Name { get; set; }
+            public string Command { get; set; }
+        }        
     }
 }

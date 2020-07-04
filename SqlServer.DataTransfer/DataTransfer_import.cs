@@ -18,20 +18,31 @@ namespace AO.SqlServer
         {
             using (var zip = new ZipArchive(input, ZipArchiveMode.Read))
             {
-                var allTables = GetSchema(zip);
+                var allTables = DeserializeEntryJson<Dictionary<string, List<string>>>(zip, entrySchema);
                 var createdTables = await CreateTablesIfNotExistsAsync(connection, allTables);
                 
                 var entry = zip.GetEntry(entryData);
                 using (var stream = entry.Open())
                 {
-                    await Task.Run(() =>
+                    await Task.Run(async () =>
                     {
                         _dataSet.ReadXml(stream);
                         MarkAddedRows(_dataSet);
-                        foreach (var tableName in createdTables) InsertRows(connection, tableName);
+                        foreach (var tableName in createdTables) await InsertRows(connection, tableName);
                     });
-                }                
+                }
+
+                var foreignKeys = DeserializeEntryJson<List<FKBuilder.ConstraintObject>>(zip, entryFKs);
+                foreach (var fk in foreignKeys)
+                {
+                    if (!await foreignKeyExists(fk.Name))
+                    {
+                        await connection.ExecuteAsync(fk.Command);
+                    }
+                }
             }
+
+            async Task<bool> foreignKeyExists(string name) => (await connection.QuerySingleOrDefaultAsync<int>("SELECT 1 FROM [sys].[foreign_keys] WHERE [name]=@name", new { name })).Equals(1);
         }
 
         public async Task ImportFileAsync(SqlConnection connection, string fileName)
@@ -50,21 +61,38 @@ namespace AO.SqlServer
             }
         }
 
-        private void InsertRows(SqlConnection connection, string tableName)
+        private async Task InsertRows(SqlConnection connection, string tableName)
         {
             var dataTable = _dataSet.Tables[tableName];
             var name = ParseTableName(tableName);
 
-            using (SqlCommand select = BuildSelectCommand(dataTable, connection, name.Schema, name.Name))
+            bool identityIns = await hasIdentity(name);
+
+            try
             {
-                using (var adapter = new SqlDataAdapter(select))
+                if (identityIns) connection.Execute($"SET IDENTITY_INSERT [{name.Schema}].[{name.Name}] ON");
+
+                using (SqlCommand select = BuildSelectCommand(dataTable, connection, name.Schema, name.Name))
                 {
-                    using (var builder = new SqlCommandBuilder(adapter))
+                    using (var adapter = new SqlDataAdapter(select))
                     {
-                        adapter.InsertCommand = builder.GetInsertCommand();
-                        adapter.Update(dataTable);
+                        using (var builder = new SqlCommandBuilder(adapter))
+                        {
+                            adapter.InsertCommand = builder.GetInsertCommand();
+                            adapter.Update(dataTable);
+                        }
                     }
                 }
+            }
+            finally
+            {
+                if (identityIns) connection.Execute($"SET IDENTITY_INSERT [{name.Schema}].[{name.Name}] OFF");                
+            }
+
+            async Task<bool> hasIdentity(ObjectName objectName)
+            {
+                int objectId = await GetObjectId(connection, objectName.Schema, objectName.Name);
+                return (await connection.QueryAsync<int>("SELECT [is_identity] FROM [sys].[columns] WHERE [object_id]=@objectId", new { objectId })).Any(value => value == 1);
             }
         }
 
@@ -135,17 +163,22 @@ namespace AO.SqlServer
             return newTables;
         }
 
-        private Dictionary<string, List<string>> GetSchema(ZipArchive zip)
+        private T DeserializeEntryJson<T>(ZipArchive zip, string entryName)
         {
-            var entry = zip.GetEntry(entrySchema);
-            using (var stream = entry.Open())
+            var entry = zip.GetEntry(entryName);
+            if (entry != null)
             {
-                using (var reader = new StreamReader(stream))
+                using (var stream = entry.Open())
                 {
-                    string json = reader.ReadToEnd();
-                    return JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(json);
+                    using (var reader = new StreamReader(stream))
+                    {
+                        string json = reader.ReadToEnd();
+                        return JsonConvert.DeserializeObject<T>(json);
+                    }
                 }
             }
+
+            return default;
         }
     }
 }
